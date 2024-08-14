@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dingusTerminal</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+        .terminal {
+            width: 80%;
+            max-width: 800px;
+            margin: 20px auto;
+            background: #2b2b2b;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            overflow: hidden;
+            max-height: 80%;
+        }
+        .intro {
+            color: #ff6600;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+        .input-line input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            padding: 5px;
+            outline: none;
+            font-size: 16px;
+        }
+        .input-line span {
+            color: #ff6600;
+            margin-right: 5px;
+        }
+        .output {
+            white-space: pre-wrap;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .command-output {
+            color: #d0d0d0;
+            margin: 5px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #555;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+        }
+        td {
+            background-color: #2b2b2b;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="intro">
+            Welcome to the dingusTerminal. Type `help` to see available commands.
+        </div>
+        <div id="output" class="output"></div>
+        <div class="input-line">
+            <span>$</span><input id="commandInput" type="text" autofocus placeholder="Type a command...">
+        </div>
+    </div>
+
+    <script>
+        let currentProxy = 0;
+        let isPrompting = false;
+        let commandHistory = [];
+        const proxies = [
+            "https://cors-anywhere.herokuapp.com/",
+            "https://cors.bridged.cc/",
+            "https://thingproxy.freeboard.io/fetch/",
+            "https://api.codetabs.com/v1/proxy?quest=",
+            "https://api.codetabs.com/v1/tmp/?quest="
+        ];
+        const startTime = Date.now();
+        const githubLink = "https://github.com/dinguschan-owo/dingusTerminal";
+        document.getElementById('commandInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                const input = event.target.value.trim();
+                event.target.value = '';
+                if (input) commandHistory.push(input);
+                if (isPrompting) {
+                    handlePromptResponse(input);
+                } else {
+                    handleCommand(input);
+                }
+            }
+        });
+
+        function handleCommand(command) {
+            const outputDiv = document.getElementById('output');
+            const output = document.createElement('div');
+            output.className = 'command-output';
+
+            switch (command.toLowerCase()) {
+                case 'clear':
+                    outputDiv.innerHTML = '';
+                    return;
+                case 'clearhistory':
+                    commandHistory = [];  // Clear the command history
+                    output.textContent = 'Command history cleared.';
+                    break;
+                case 'date':
+                    output.textContent = 'Current date and time: ' + new Date().toLocaleString();
+                    break;
+                case 'help':
+                    output.textContent = 'Available commands:\n' +
+                                         '  clear - Clear the terminal\n' +
+                                         '  clearhistory - Clear the command history\n' +
+                                         '  date - Show the current date and time\n' +
+                                         '  scrape - Perform a scrape operation\n' +
+                                         '  proxy - Switch between CORS proxies\n' +
+                                         '  history - Show the list of previous commands\n' +
+                                         '  uptime - Show how long the terminal has been active\n' +
+                                         '  sysinfo - Show system information\n' +
+                                         '  speed - Check Wi-Fi speed\n' +
+                                         '  source - Show the GitHub repository link\n' +
+                                         '  help - Show this help message';
+                    break;
+                case 'scrape':
+                    promptForURL();
+                    return;
+                case 'proxy':
+                    output.textContent = 'Available proxies:\n' +
+                                         proxies.map((proxy, index) => `${index + 1}. ${proxy}`).join('\n') +
+                                         '\nChoose a proxy by entering its number:';
+                    outputDiv.appendChild(output);
+                    scrollToBottom();
+                    promptForProxy();
+                    return;
+                case 'history':
+                    output.textContent = 'Command history:\n' + commandHistory.join('\n');
+                    break;
+                case 'uptime':
+                    const uptime = Math.floor((Date.now() - startTime) / 1000);
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    const seconds = uptime % 60;
+                    output.textContent = `Uptime: ${hours}h ${minutes}m ${seconds}s`;
+                    break;
+                case 'sysinfo':
+                    fetch('https://ipapi.co/json/')
+                        .then(response => response.json())
+                        .then(data => {
+                            const info = `
+                            <table>
+                                <tr><th>Field</th><th>Value</th></tr>
+                                <tr><td>IP Address</td><td>${data.ip}</td></tr>
+                                <tr><td>Country</td><td>${data.country_name}</td></tr>
+                                <tr><td>Region</td><td>${data.region}</td></tr>
+                                <tr><td>City</td><td>${data.city}</td></tr>
+                                <tr><td>Latitude</td><td>${data.latitude}</td></tr>
+                                <tr><td>Longitude</td><td>${data.longitude}</td></tr>
+                                <tr><td>Postal Code</td><td>${data.postal}</td></tr>
+                                <tr><td>Timezone</td><td>${data.timezone}</td></tr>
+                                <tr><td>ISP</td><td>${data.org}</td></tr>
+                            </table>`;
+                            output.innerHTML = info;
+                        })
+                        .catch(error => {
+                            output.textContent = 'Error fetching system information: ' + error.message;
+                        });
+                    break;
+                case 'speed':
+                    output.textContent = 'Checking Wi-Fi speed...';
+                    outputDiv.appendChild(output);
+                    scrollToBottom();
+                    checkSpeed();
+                    return;
+                case 'source':
+                    output.textContent = `GitHub Repository: ${githubLink}`;
+                    break;
+                default:
+                    output.textContent = `Command not recognized: ${command}`;
+                    break;
+            }
+
+            outputDiv.appendChild(output);
+            scrollToBottom();
+        }
+
+        function promptForURL() {
+            const outputDiv = document.getElementById('output');
+            const promptDiv = document.createElement('div');
+            promptDiv.className = 'command-output';
+            promptDiv.textContent = 'Enter the URL to scrape:';
+            outputDiv.appendChild(promptDiv);
+            scrollToBottom();
+            isPrompting = 'scrape';
+        }
+
+        function promptForProxy() {
+            isPrompting = 'proxy';
+        }
+
+        function handlePromptResponse(response) {
+            const outputDiv = document.getElementById('output');
+            const output = document.createElement('div');
+            output.className = 'command-output';
+
+            if (isPrompting === 'scrape') {
+                fetch(proxies[currentProxy] + response)
+                    .then(response => response.text())
+                    .then(data => {
+                        const file = new Blob([data], { type: "text/plain" });
+                        const url = URL.createObjectURL(file);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = "_blank";
+                        a.download = "scraped-source.txt";
+                        a.click();
+                        output.textContent = 'Scraping completed. Open the file in a new tab.';
+                        outputDiv.appendChild(output);
+                        scrollToBottom();
+                    })
+                    .catch(error => {
+                        output.textContent = 'Error scraping the URL: ' + error.message;
+                        outputDiv.appendChild(output);
+                        scrollToBottom();
+                    });
+            } else if (isPrompting === 'proxy') {
+                const index = parseInt(response, 10) - 1;
+                if (index >= 0 && index < proxies.length) {
+                    currentProxy = index;
+                    output.textContent = `Switched to proxy: ${proxies[currentProxy]}`;
+                } else {
+                    output.textContent = 'Invalid proxy number. Please try again.';
+                }
+                outputDiv.appendChild(output);
+                scrollToBottom();
+            }
+
+            isPrompting = false;
+        }
+
+        function scrollToBottom() {
+            const outputDiv = document.getElementById('output');
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function checkSpeed() {
+            // dummy speed check :(
+            const outputDiv = document.getElementById('output');
+            const output = document.createElement('div');
+            output.className = 'command-output';
+            output.textContent = 'Speed check is not implemented.';
+            outputDiv.appendChild(output);
+            scrollToBottom();
+        }
+    </script>
+</body>
+</html>
